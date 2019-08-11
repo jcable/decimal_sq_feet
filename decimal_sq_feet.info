@@ -1,0 +1,12 @@
+name = Decimal Square Feet
+description = Collects and stores value in decimal feet
+package = Boat Register
+core = 7.x
+files[] = decimal_sq_feet.module
+files[] = decimal_sq_feet.install
+
+; Information added by drupal.org packaging script on 2013-10-19
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "boat register"
+datestamp = "1381053291"

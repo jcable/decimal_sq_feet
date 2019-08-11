@@ -1,0 +1,307 @@
+<?php
+/**
+ * @file
+ * Collects feet and inches from two fields and stores value in metric feet.
+ */
+
+/**
+ * @defgroup decimal_sq_feet
+ * @ingroup boat register
+ * @{
+ * Examples using Field Types API.
+ *
+ *
+ * Providing a field requires:
+ * - Defining a field:
+ *   - hook_field_info()
+ *   - hook_field_schema()
+ *   - hook_field_validate()
+ *   - hook_field_is_empty()
+ *
+ * - Defining a formatter for the field (the portion that outputs the field for
+ *   display):
+ *   - hook_field_formatter_info()
+ *   - hook_field_formatter_view()
+ *
+ * - Defining a widget for the edit form:
+ *   - hook_field_widget_info()
+ *   - hook_field_widget_form()
+ *
+ * Our module defines the field in decimal_feet_field_info(),
+ * decimal_feet_field_validate() and decimal_feet_field_is_empty().
+ * decimal_feet_field_schema() is implemented in decimal_feet.install.
+ *
+ * Our module sets up a formatter in decimal_feet_field_formatter_info() and
+ * decimal_feet_field_formatter_view(). These are the API hooks that present
+ * formatted and themed output to the user.
+
+ * And finally, our module defines the widget in
+ * decimal_feet_field_widget_info() and decimal_feet_field_widget_form().
+ * The widget is the form element used to receive input from the user
+ * when the field is being populated.
+ *
+ * @see field_types
+ * @see field
+ */
+ 
+
+
+ 
+
+
+/***************************************************************
+ * Field Type API hooks
+ ***************************************************************/
+/**
+ * Implements hook_field_info().
+ *
+ * Provides the description of the field.
+ */
+function decimal_sq_feet_field_info() {
+  return array(
+    // We name our field as the associative name of the array.
+    'decimal_sq_feet' => array(
+      'label' => t('Decimal square feet'),
+      'description' => t('Collects and stores in decimal feet with option to display in imperial or metric.'),
+      'default_widget' => 'decimal_sq_feet_widget',
+      'default_formatter' => 'decimal_sq_feet_formatter',
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_validate().
+ *
+ * This hook gives us a chance to validate content that's in our
+ * field. We're really only interested in the $items parameter, since
+ * it holds arrays representing content in the field we've defined.
+ * We want to verify that the items only contain numeric values. 
+ * If the item validates, we do nothing. If it doesn't
+ * validate, we add our own error notification to the $errors parameter.
+ *
+ * @see decimal_sq_feet_field_widget_error()
+ */
+function decimal_sq_feet_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  foreach ($items as $delta => $item) {
+    if (!empty($item['dec_sq_feet'])) {
+      
+      
+      if (!is_numeric($item['dec_sq_feet'])) {
+        $errors[$field['field_name']][$langcode][$delta][] = array(
+          'error' => 'decimal_sq_feet_invalid',
+          'message' => t('Must be a number'),
+        );
+      }
+     
+    }
+  }
+}
+
+
+/**
+ * Implements hook_field_is_empty().
+ *
+ * hook_field_is_emtpy() is where Drupal asks us if this field is empty.
+ * Return TRUE if it does not contain data, FALSE if it does. This lets
+ * the form API flag an error when required fields are empty.
+ */
+function decimal_sq_feet_field_is_empty($item, $field) {
+  return empty($item['dec_sq_feet']);
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ *
+ * This is where we define the formatters
+ *
+ * @see decimal_sq_feet_field_formatter_view()
+ */
+function decimal_sq_feet_field_formatter_info() {
+  return array(
+    // This formatter just displays the value.
+    'decimal_sq_feet_formatter' => array(
+      'label' => t('Text-based formatter'),
+      'field types' => array('decimal_sq_feet'),
+    ),
+    
+  );
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ *
+ * One formatter is implemented.
+ * - decimal_feet_formatter outputs markup and the value entered converted to decimal ft
+ *
+ * @see decimal_sq_feet_field_formatter_info()
+ */
+function decimal_sq_feet_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+ 
+  $element = array();
+
+  switch ($display['type']) {
+    // This formatter outputs the field as text.
+    case 'decimal_sq_feet_formatter':
+      foreach ($items as $delta => $item) {
+      
+       $decimal_value = $item['dec_sq_feet'];
+      
+       
+        $element[$delta] = array(
+          // We create a render array to produce the desired markup.
+          // See theme_html_tag().
+          '#type' => 'html_tag',
+          '#tag' => 'span',
+          
+          // This value will get converted to ft/ins or metres on the node 
+          // page template and other views. It will depend on value of boat_units
+          // which is stored in another of this node's fields - see below.
+          '#value' => $decimal_value.' sq ft',
+        );
+      }
+      break;
+
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_info().
+ *
+ * - A 2-textfield widget that gathers ft. and ins. separately.
+ * These widget types will eventually show up in hook_field_widget_form,
+ * where we will have to flesh them out.
+ *
+ * @see decimal_sq_feet_field_widget_form()
+ */
+function decimal_sq_feet_field_widget_info() {
+  return array(
+    'decimal_sq_feet_widget' => array(
+       'label' => t('Decimal square feet'),
+       'field types' => array('decimal_sq_feet'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * hook_widget_form() is where Drupal tells us to create form elements for
+ * our field's widget.
+ *
+ *
+ *
+ * decimal_feet_widget displays 2 text fields, one each for ft.
+ * and ins. However, the field type defines a single text column,
+ * dec_feet. Define an element validate handler that converts our 
+ * ft. and ins. fields into a simulated single 'dec_feet' form element.
+ */
+
+function decimal_sq_feet_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $value = isset($items[$delta]['dec_sq_feet']) ? $items[$delta]['dec_sq_feet'] : '';
+
+  $widget = $element;
+  $widget['#delta'] = $delta;
+
+  switch ($instance['widget']['type']) {
+   case 'decimal_sq_feet_widget':
+   
+      // Make this a fieldset with the two text fields.
+      $widget += array(
+        '#type' => 'fieldset',
+        '#element_validate' => array('decimal_sq_feet_widget_validate'),
+
+        // #delta is set so that the validation function will be able
+        // to access external value information which otherwise would be
+        // unavailable.
+        '#delta' => $delta,
+
+        '#attached' => array(
+          'css' => array(drupal_get_path('module', 'decimal_sq_feet') . '/decimal_sq_feet.css'),
+        ),
+      );
+
+      // Create a textfield for feet and meters.
+      foreach (array('sqft' => t('Sq ft')) as $key => $title) {
+      
+       
+        $widget[$key] = array(
+          '#type' => 'textfield',
+          '#title' => $title,
+          '#size' => 5,
+          '#default_value' => $value,
+          '#attributes' => array('class' => array('dec_feet-entry')),
+          '#description' => t($title),
+          
+    	);
+        // Since Form API doesn't allow a fieldset to be required, we
+        // have to require each field element individually.
+        if ($instance['required'] == 1) $widget[$key]['#required'] = 1;
+      }
+      break;
+
+  }
+
+  $element['dec_sq_feet'] = $widget;
+  return $element;
+}
+
+  
+/**
+ * Validate the individual fields and then convert them into a single
+ * value as decimal feet.
+ */
+function decimal_sq_feet_widget_validate($element, &$form_state, $boat_units) {
+
+  $delta = $element['#delta']; // TODO: Isn't there a better way to find out which element?
+  $field = $form_state['field'][$element['#field_name']][$element['#language']]['field'];
+  $field_name = $field['field_name'];
+
+  if (isset($form_state['values'][$field_name][$element['#language']][$delta]['dec_sq_feet'])) {
+    $values = $form_state['values'][$field_name][$element['#language']][$delta]['dec_sq_feet'];
+    
+
+    foreach (array('sqft') as $dec_sq_field) {
+      $dec_sq_field_value = $values[$dec_sq_field];
+ 
+      
+ // If they left any empty, we'll set the value empty and quit.
+      if (strlen($values[$dec_sq_field]) == 0) {
+        form_set_value($element, '', $form_state);
+        return;
+      }
+      
+    }
+
+
+$value = $values['sqft'];
+
+form_set_value($element, $value, $form_state);
+    
+  }
+}
+
+
+/**
+ * Implements hook_field_widget_error().
+ *
+ * hook_field_widget_error() lets us figure out what to do with errors
+ * we might have generated in hook_field_validate(). Generally, we'll just
+ * call form_error().
+ *
+ * @see decimal_feet_field_validate()
+ * @see form_error()
+ */
+function decimal_sq_feet_field_widget_error($element, $error, $form, &$form_state) {
+  switch ($error['error']) {
+    case 'decimal_sq_feet_invalid':
+      form_error($element, $error['message']);
+      break;
+  }
+}
+
+
+/**
+ * @} End of "defgroup decimal_sq_feet".
+ */
